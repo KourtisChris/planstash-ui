@@ -1,0 +1,254 @@
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+
+export default function EditPlan() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const [categories, setCategories] = useState([])
+  const [showCatDropdown, setShowCatDropdown] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [editingCat, setEditingCat] = useState(null)
+  const [catSearch, setCatSearch] = useState('')
+  const [newImages, setNewImages] = useState([])
+  const [existingImages, setExistingImages] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+  const [error, setError] = useState('')
+
+  const [form, setForm] = useState({
+    title: '', asset: '', timeframe: '',
+    entry_price: '', take_profit: '', stop_loss: '',
+    description: '', category_id: ''
+  })
+
+  useEffect(() => {
+    fetchPlan()
+    fetchCategories()
+  }, [id])
+
+  const fetchPlan = async () => {
+    const { data } = await supabase.from('plans').select('*, plan_images(*)').eq('id', id).single()
+    if (data) {
+      setForm({
+        title: data.title || '',
+        asset: data.asset || '',
+        timeframe: data.timeframe || '',
+        entry_price: data.entry_price ?? '',
+        take_profit: data.take_profit ?? '',
+        stop_loss: data.stop_loss ?? '',
+        description: data.description || '',
+        category_id: data.category_id || ''
+      })
+      setExistingImages(data.plan_images || [])
+    }
+    setFetching(false)
+  }
+
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').eq('user_id', user.id).order('name')
+    setCategories(data || [])
+  }
+
+  const handleDeleteExistingImage = async (img) => {
+    await supabase.storage.from('plan-images').remove([img.storage_path])
+    await supabase.from('plan_images').delete().eq('id', img.id)
+    setExistingImages(prev => prev.filter(i => i.id !== img.id))
+  }
+
+  const handleAddCategory = async () => {
+    if (!newCatName.trim()) return
+    const { data, error } = await supabase.from('categories').insert({ name: newCatName.trim(), user_id: user.id }).select().single()
+    if (!error && data) {
+      setCategories(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+      setForm(f => ({ ...f, category_id: data.id }))
+      setNewCatName('')
+    }
+  }
+
+  const handleUpdateCategory = async (catId) => {
+    if (!editingCat?.name.trim()) return
+    const { error } = await supabase.from('categories').update({ name: editingCat.name }).eq('id', catId)
+    if (!error) {
+      setCategories(prev => prev.map(c => c.id === catId ? { ...c, name: editingCat.name } : c))
+      setEditingCat(null)
+    }
+  }
+
+  const handleDeleteCategory = async (catId) => {
+    if (!window.confirm('Delete this category?')) return
+    const { error } = await supabase.from('categories').delete().eq('id', catId)
+    if (!error) {
+      setCategories(prev => prev.filter(c => c.id !== catId))
+      if (form.category_id === catId) setForm(f => ({ ...f, category_id: '' }))
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.title.trim() || !form.asset.trim()) return setError('Title and asset are required.')
+    setLoading(true)
+    setError('')
+
+    const { error: updateError } = await supabase.from('plans').update({
+      title: form.title.trim(),
+      asset: form.asset.trim(),
+      timeframe: form.timeframe || null,
+      entry_price: form.entry_price ? parseFloat(form.entry_price) : null,
+      take_profit: form.take_profit ? parseFloat(form.take_profit) : null,
+      stop_loss: form.stop_loss ? parseFloat(form.stop_loss) : null,
+      description: form.description || null,
+      category_id: form.category_id || null,
+    }).eq('id', id)
+
+    if (updateError) { setError(updateError.message); setLoading(false); return }
+
+    for (const file of newImages) {
+      const ext = file.name.split('.').pop()
+      const path = `${user.id}/${id}/${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage.from('plan-images').upload(path, file)
+      if (!uploadError) {
+        await supabase.from('plan_images').insert({ plan_id: id, user_id: user.id, storage_path: path })
+      }
+    }
+
+    navigate(`/plan/${id}`)
+  }
+
+  const selectedCat = categories.find(c => c.id === form.category_id)
+  const filteredCats = categories.filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase()))
+
+  if (fetching) return <div className="loading">Loading...</div>
+
+  return (
+    <div className="page page-form">
+      <div className="form-header">
+        <button className="btn-back" onClick={() => navigate(`/plan/${id}`)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+        <h1 className="page-title">Edit plan</h1>
+      </div>
+
+      <form onSubmit={handleSubmit} className="plan-form">
+        {error && <div className="form-error">{error}</div>}
+
+        {existingImages.length > 0 && (
+          <div className="existing-images">
+            <label className="field-label">Current charts</label>
+            <div className="img-thumbs">
+              {existingImages.map(img => (
+                <ExistingThumb key={img.id} img={img} onDelete={handleDeleteExistingImage} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="upload-box" onClick={() => document.getElementById('img-upload-edit').click()}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          <span>{newImages.length > 0 ? `${newImages.length} new file(s) selected` : 'Add more chart screenshots'}</span>
+          <small>PNG, JPG — optional</small>
+          <input id="img-upload-edit" type="file" accept="image/*" multiple onChange={e => setNewImages(Array.from(e.target.files))} style={{ display: 'none' }} />
+        </div>
+
+        <div className="form-grid">
+          <div className="field full">
+            <label>Title <span className="req">*</span></label>
+            <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
+          </div>
+          <div className="field">
+            <label>Asset / pair <span className="req">*</span></label>
+            <input type="text" value={form.asset} onChange={e => setForm(f => ({ ...f, asset: e.target.value }))} required />
+          </div>
+          <div className="field">
+            <label>Timeframe</label>
+            <input type="text" value={form.timeframe} onChange={e => setForm(f => ({ ...f, timeframe: e.target.value }))} placeholder="e.g. 4H · 1D" />
+          </div>
+          <div className="field">
+            <label>Entry price</label>
+            <input type="number" step="any" value={form.entry_price} onChange={e => setForm(f => ({ ...f, entry_price: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label>Take profit</label>
+            <input type="number" step="any" value={form.take_profit} onChange={e => setForm(f => ({ ...f, take_profit: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label>Stop loss</label>
+            <input type="number" step="any" value={form.stop_loss} onChange={e => setForm(f => ({ ...f, stop_loss: e.target.value }))} />
+          </div>
+          <div className="field full" style={{ position: 'relative' }}>
+            <label>Category</label>
+            <div className="cat-select" onClick={() => setShowCatDropdown(!showCatDropdown)}>
+              {selectedCat ? selectedCat.name : 'Select or create a category...'}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            {showCatDropdown && (
+              <div className="cat-dropdown">
+                <div className="cat-search-row">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input autoFocus type="text" placeholder="Search..." value={catSearch} onChange={e => setCatSearch(e.target.value)} />
+                </div>
+                <div className="cat-list">
+                  {filteredCats.map(cat => (
+                    <div key={cat.id} className={`cat-option ${form.category_id === cat.id ? 'selected' : ''}`}>
+                      {editingCat?.id === cat.id ? (
+                        <input className="cat-edit-input" value={editingCat.name} onChange={e => setEditingCat({ ...editingCat, name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') handleUpdateCategory(cat.id); if (e.key === 'Escape') setEditingCat(null) }} />
+                      ) : (
+                        <span onClick={() => { setForm(f => ({ ...f, category_id: cat.id })); setShowCatDropdown(false); setCatSearch('') }}>
+                          {form.category_id === cat.id && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><polyline points="20 6 9 17 4 12"/></svg>}
+                          {cat.name}
+                        </span>
+                      )}
+                      <div className="cat-actions">
+                        {editingCat?.id === cat.id ? (
+                          <button type="button" onClick={() => handleUpdateCategory(cat.id)}>Save</button>
+                        ) : (
+                          <button type="button" onClick={() => setEditingCat({ id: cat.id, name: cat.name })}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                        )}
+                        <button type="button" className="cat-delete" onClick={() => handleDeleteCategory(cat.id)}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="cat-new-row">
+                  <input type="text" placeholder="New category name..." value={newCatName} onChange={e => setNewCatName(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())} />
+                  <button type="button" className="btn-cat-add" onClick={handleAddCategory}>Add</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="field full">
+            <label>Description</label>
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} />
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button type="button" className="btn-secondary" onClick={() => navigate(`/plan/${id}`)}>Cancel</button>
+          <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Save changes'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function ExistingThumb({ img, onDelete }) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    supabase.storage.from('plan-images').createSignedUrl(img.storage_path, 3600).then(({ data }) => { if (data) setUrl(data.signedUrl) })
+  }, [img.storage_path])
+  return (
+    <div className="img-thumb-wrap">
+      {url && <img src={url} alt="" />}
+      <button type="button" className="img-thumb-delete" onClick={() => onDelete(img)}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  )
+}
