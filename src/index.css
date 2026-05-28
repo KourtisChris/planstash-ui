@@ -192,7 +192,7 @@ input::placeholder, textarea::placeholder { color: var(--text3); }
 /* ---- Multi-select categories ---- */
 .cat-selected-chips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
 .cat-chip { font-size: 11px; background: #2563eb1a; border: 0.5px solid #2563eb55; color: var(--blue3); border-radius: 4px; padding: 2px 8px; }
-.cat-checkbox { width: 12px !important; height: 12px !important; min-width: 12px; border-radius: 3px; border: 0.5px solid var(--border2); background: var(--bg4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cat-checkbox { width: 16px; height: 16px; border-radius: 4px; border: 0.5px solid var(--border2); background: var(--bg4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .cat-checkbox.checked { background: var(--blue); border-color: var(--blue); }
 
 /* ---- Detail page ---- */
@@ -252,3 +252,60 @@ input::placeholder, textarea::placeholder { color: var(--text3); }
 .asset-bar-track { flex: 1; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
 .asset-bar-fill { height: 100%; border-radius: 3px; background: var(--blue); transition: width 0.6s ease; }
 .asset-bar-num { font-size: 12px; color: var(--text3); width: 24px; text-align: right; flex-shrink: 0; }
+
+/* ---- Toggle ---- */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; gap: 16px; }
+.toggle-row:hover { border-color: var(--border); }
+.toggle-label { font-size: 13px; color: var(--text); font-weight: 500; margin-bottom: 2px; }
+.toggle-desc { font-size: 12px; color: var(--text3); }
+.toggle { width: 40px; height: 22px; background: var(--bg4); border-radius: 11px; position: relative; flex-shrink: 0; transition: background 0.2s; border: 0.5px solid var(--border2); }
+.toggle.on { background: var(--blue); border-color: var(--blue); }
+.toggle-thumb { width: 16px; height: 16px; background: var(--text3); border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
+.toggle.on .toggle-thumb { left: 20px; background: #fff; }
+
+/* ---- Feed ---- */
+.feed { display: flex; flex-direction: column; gap: 16px; max-width: 640px; }
+.feed-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.feed-card-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 16px 10px; gap: 12px; flex-wrap: wrap; }
+.feed-user { display: flex; align-items: center; gap: 10px; }
+.feed-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--blue2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0; }
+.feed-username { font-size: 13px; font-weight: 600; color: var(--text); }
+.feed-date { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.feed-asset { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.feed-asset-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.feed-img { width: 100%; max-height: 340px; overflow: hidden; background: var(--bg3); }
+.feed-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.feed-levels { display: flex; gap: 16px; padding: 10px 16px; border-top: 0.5px solid var(--border); flex-wrap: wrap; }
+.feed-level { font-size: 12px; color: var(--text2); }
+.feed-level strong { color: var(--text); }
+.feed-level.tp strong { color: var(--green-text); }
+.feed-level.sl strong { color: var(--red-text); }
+.feed-desc { padding: 10px 16px; font-size: 13px; color: var(--text2); line-height: 1.6; border-top: 0.5px solid var(--border); }
+.feed-actions { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-top: 0.5px solid var(--border); }
+.feed-reaction { display: flex; align-items: center; gap: 6px; background: transparent; border: 0.5px solid var(--border2); border-radius: 20px; padding: 5px 12px; font-size: 13px; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+.feed-reaction:hover { background: var(--bg4); }
+.feed-reaction.green.active { background: var(--green-bg); border-color: #22c55e44; color: var(--green-text); }
+.feed-reaction.red.active { background: var(--red-bg); border-color: #ef444444; color: var(--red-text); }
+.feed-comment-btn { display: flex; align-items: center; gap: 6px; background: transparent; border: 0.5px solid var(--border2); border-radius: 20px; padding: 5px 12px; font-size: 13px; color: var(--text2); cursor: pointer; margin-left: auto; }
+.feed-comment-btn:hover { background: var(--bg4); }
+.feed-comments { border-top: 0.5px solid var(--border); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+.feed-comment { display: flex; align-items: baseline; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+.feed-comment-user { color: var(--blue3); font-weight: 600; flex-shrink: 0; }
+.feed-comment-text { color: var(--text2); flex: 1; }
+.feed-comment-date { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+.feed-comment-form { display: flex; gap: 8px; margin-top: 4px; }
+.feed-comment-form input { flex: 1; }
+.feed-comment-form .btn-primary { padding: 8px 14px; white-space: nowrap; }
+
+/* ---- Avatar ---- */
+.sb-avatar-img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.avatar-upload-circle { width: 72px; height: 72px; border-radius: 50%; background: var(--blue2); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; border: 2px solid var(--border2); }
+.avatar-upload-circle img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-upload-initials { font-size: 22px; font-weight: 600; color: #fff; }
+.avatar-upload-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; }
+.avatar-upload-circle:hover .avatar-upload-overlay { opacity: 1; }
+
+/* ---- Feed avatars ---- */
+.feed-avatar-img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.feed-comment-avatar { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.feed-comment-avatar-initials { width: 20px; height: 20px; border-radius: 50%; background: var(--blue2); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; color: #fff; flex-shrink: 0; }

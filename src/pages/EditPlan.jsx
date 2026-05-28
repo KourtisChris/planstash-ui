@@ -23,7 +23,7 @@ export default function EditPlan() {
   const [form, setForm] = useState({
     asset: '', timeframe: '',
     entry_price: '', take_profit: '', stop_loss: '',
-    description: '', category_ids: []
+    description: '', category_ids: [], is_public: false
   })
 
   useEffect(() => {
@@ -43,7 +43,8 @@ export default function EditPlan() {
         take_profit: data.take_profit ?? '',
         stop_loss: data.stop_loss ?? '',
         description: data.description || '',
-        category_ids: (data.plan_categories || []).map(pc => pc.category_id)
+        category_ids: (data.plan_categories || []).map(pc => pc.category_id),
+        is_public: data.is_public || false,
       })
       setExistingImages(data.plan_images || [])
     }
@@ -111,6 +112,7 @@ export default function EditPlan() {
       take_profit: form.take_profit ? parseFloat(form.take_profit) : null,
       stop_loss: form.stop_loss ? parseFloat(form.stop_loss) : null,
       description: form.description || null,
+      is_public: form.is_public,
     }).eq('id', id)
 
     if (updateError) { setError(updateError.message); setLoading(false); return }
@@ -213,8 +215,11 @@ export default function EditPlan() {
                         <input className="cat-edit-input" value={editingCat.name} onChange={e => setEditingCat({ ...editingCat, name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') handleUpdateCategory(cat.id); if (e.key === 'Escape') setEditingCat(null) }} />
                       ) : (
                         <span onClick={() => toggleCategory(cat.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                          <span className={`cat-checkbox ${form.category_ids.includes(cat.id) ? 'checked' : ''}`}>
-                            {form.category_ids.includes(cat.id) && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                          <span
+                            className={`cat-checkbox ${form.category_ids.includes(cat.id) ? 'checked' : ''}`}
+                            style={{ width: '12px', height: '12px', minWidth: '12px', maxWidth: '12px', display: 'inline-flex', flexShrink: 0 }}
+                          >
+                            {form.category_ids.includes(cat.id) && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                           </span>
                           {cat.name}
                         </span>
@@ -244,6 +249,17 @@ export default function EditPlan() {
           <div className="field full">
             <label>Description</label>
             <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} />
+          </div>
+          <div className="field full">
+            <div className="toggle-row" onClick={() => setForm(f => ({ ...f, is_public: !f.is_public }))}>
+              <div>
+                <div className="toggle-label">Share to Open Plans</div>
+                <div className="toggle-desc">This plan will be visible to all users in the Open Plans feed</div>
+              </div>
+              <div className={`toggle ${form.is_public ? 'on' : ''}`}>
+                <div className="toggle-thumb" />
+              </div>
+            </div>
           </div>
         </div>
 

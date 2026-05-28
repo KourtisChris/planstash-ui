@@ -1,3 +1,5 @@
+// App.jsx
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
@@ -8,6 +10,7 @@ import EditPlan from './pages/EditPlan'
 import PlanDetail from './pages/PlanDetail'
 import Performance from './pages/Performance'
 import MostTraded from './pages/MostTraded'
+import OpenPlans from './pages/OpenPlans'
 import Layout from './components/Layout'
 
 function PrivateRoute({ children }) {
@@ -36,6 +39,7 @@ export default function App() {
             <Route path="plan/:id" element={<PlanDetail />} />
             <Route path="performance" element={<Performance />} />
             <Route path="most-traded" element={<MostTraded />} />
+            <Route path="open-plans" element={<OpenPlans />} />
           </Route>
         </Routes>
       </BrowserRouter>
