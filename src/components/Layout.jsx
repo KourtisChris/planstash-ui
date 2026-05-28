@@ -95,7 +95,7 @@ export default function Layout() {
       <aside className="sidebar">
         <div className="sb-logo">
           <div className="sb-logo-icon">
-            <img src="/favicon.png" alt="PlanStash" style={{ width: '88px', height: '88px', objectFit: 'contain' }} />
+            <img src="/favicon.png" alt="PlanStash" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
           </div>
           <span className="sb-logo-name">Plan<span>Stash</span></span>
         </div>
