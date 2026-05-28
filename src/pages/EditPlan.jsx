@@ -1,3 +1,5 @@
+// EditPlan.jsx
+
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -19,9 +21,9 @@ export default function EditPlan() {
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({
-    title: '', asset: '', timeframe: '',
+    asset: '', timeframe: '',
     entry_price: '', take_profit: '', stop_loss: '',
-    description: '', category_id: ''
+    description: '', category_ids: []
   })
 
   useEffect(() => {
@@ -30,17 +32,18 @@ export default function EditPlan() {
   }, [id])
 
   const fetchPlan = async () => {
-    const { data } = await supabase.from('plans').select('*, plan_images(*)').eq('id', id).single()
+    const { data } = await supabase.from('plans')
+      .select('*, plan_images(*), plan_categories(category_id)')
+      .eq('id', id).single()
     if (data) {
       setForm({
-        title: data.title || '',
         asset: data.asset || '',
         timeframe: data.timeframe || '',
         entry_price: data.entry_price ?? '',
         take_profit: data.take_profit ?? '',
         stop_loss: data.stop_loss ?? '',
         description: data.description || '',
-        category_id: data.category_id || ''
+        category_ids: (data.plan_categories || []).map(pc => pc.category_id)
       })
       setExistingImages(data.plan_images || [])
     }
@@ -63,7 +66,7 @@ export default function EditPlan() {
     const { data, error } = await supabase.from('categories').insert({ name: newCatName.trim(), user_id: user.id }).select().single()
     if (!error && data) {
       setCategories(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
-      setForm(f => ({ ...f, category_id: data.id }))
+      setForm(f => ({ ...f, category_ids: [...f.category_ids, data.id] }))
       setNewCatName('')
     }
   }
@@ -82,28 +85,42 @@ export default function EditPlan() {
     const { error } = await supabase.from('categories').delete().eq('id', catId)
     if (!error) {
       setCategories(prev => prev.filter(c => c.id !== catId))
-      if (form.category_id === catId) setForm(f => ({ ...f, category_id: '' }))
+      setForm(f => ({ ...f, category_ids: f.category_ids.filter(cid => cid !== catId) }))
     }
+  }
+
+  const toggleCategory = (catId) => {
+    setForm(f => ({
+      ...f,
+      category_ids: f.category_ids.includes(catId)
+        ? f.category_ids.filter(cid => cid !== catId)
+        : [...f.category_ids, catId]
+    }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.title.trim() || !form.asset.trim()) return setError('Title and asset are required.')
+    if (!form.asset.trim()) return setError('Asset is required.')
     setLoading(true)
     setError('')
 
     const { error: updateError } = await supabase.from('plans').update({
-      title: form.title.trim(),
       asset: form.asset.trim(),
       timeframe: form.timeframe || null,
       entry_price: form.entry_price ? parseFloat(form.entry_price) : null,
       take_profit: form.take_profit ? parseFloat(form.take_profit) : null,
       stop_loss: form.stop_loss ? parseFloat(form.stop_loss) : null,
       description: form.description || null,
-      category_id: form.category_id || null,
     }).eq('id', id)
 
     if (updateError) { setError(updateError.message); setLoading(false); return }
+
+    await supabase.from('plan_categories').delete().eq('plan_id', id)
+    if (form.category_ids.length > 0) {
+      await supabase.from('plan_categories').insert(
+        form.category_ids.map(cid => ({ plan_id: id, category_id: cid }))
+      )
+    }
 
     for (const file of newImages) {
       const ext = file.name.split('.').pop()
@@ -117,7 +134,7 @@ export default function EditPlan() {
     navigate(`/plan/${id}`)
   }
 
-  const selectedCat = categories.find(c => c.id === form.category_id)
+  const selectedCats = categories.filter(c => form.category_ids.includes(c.id))
   const filteredCats = categories.filter(c => c.name.toLowerCase().includes(catSearch.toLowerCase()))
 
   if (fetching) return <div className="loading">Loading...</div>
@@ -154,10 +171,6 @@ export default function EditPlan() {
         </div>
 
         <div className="form-grid">
-          <div className="field full">
-            <label>Title <span className="req">*</span></label>
-            <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
-          </div>
           <div className="field">
             <label>Asset / pair <span className="req">*</span></label>
             <input type="text" value={form.asset} onChange={e => setForm(f => ({ ...f, asset: e.target.value }))} required />
@@ -178,11 +191,14 @@ export default function EditPlan() {
             <label>Stop loss</label>
             <input type="number" step="any" value={form.stop_loss} onChange={e => setForm(f => ({ ...f, stop_loss: e.target.value }))} />
           </div>
-          <div className="field full" style={{ position: 'relative' }}>
-            <label>Category</label>
+          <div className="field" style={{ position: 'relative' }}>
+            <label>Categories</label>
             <div className="cat-select" onClick={() => setShowCatDropdown(!showCatDropdown)}>
-              {selectedCat ? selectedCat.name : 'Select or create a category...'}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+              {selectedCats.length > 0
+                ? <div className="cat-selected-chips">{selectedCats.map(c => <span key={c.id} className="cat-chip">{c.name}</span>)}</div>
+                : <span style={{ color: 'var(--text3)' }}>Select or create categories...</span>
+              }
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             {showCatDropdown && (
               <div className="cat-dropdown">
@@ -192,12 +208,14 @@ export default function EditPlan() {
                 </div>
                 <div className="cat-list">
                   {filteredCats.map(cat => (
-                    <div key={cat.id} className={`cat-option ${form.category_id === cat.id ? 'selected' : ''}`}>
+                    <div key={cat.id} className={`cat-option ${form.category_ids.includes(cat.id) ? 'selected' : ''}`}>
                       {editingCat?.id === cat.id ? (
                         <input className="cat-edit-input" value={editingCat.name} onChange={e => setEditingCat({ ...editingCat, name: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') handleUpdateCategory(cat.id); if (e.key === 'Escape') setEditingCat(null) }} />
                       ) : (
-                        <span onClick={() => { setForm(f => ({ ...f, category_id: cat.id })); setShowCatDropdown(false); setCatSearch('') }}>
-                          {form.category_id === cat.id && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 6 }}><polyline points="20 6 9 17 4 12"/></svg>}
+                        <span onClick={() => toggleCategory(cat.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                          <span className={`cat-checkbox ${form.category_ids.includes(cat.id) ? 'checked' : ''}`}>
+                            {form.category_ids.includes(cat.id) && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                          </span>
                           {cat.name}
                         </span>
                       )}

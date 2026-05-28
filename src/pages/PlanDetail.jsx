@@ -1,3 +1,5 @@
+// PlanDetail.jsx
+
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -17,7 +19,7 @@ export default function PlanDetail() {
 
   const fetchPlan = async () => {
     const { data } = await supabase.from('plans')
-      .select('*, categories(name), plan_images(*)')
+      .select('*, plan_images(*), plan_categories(category_id, categories(id, name))')
       .eq('id', id).single()
     if (data) {
       setPlan(data)
@@ -50,6 +52,8 @@ export default function PlanDetail() {
   if (loading) return <div className="loading">Loading...</div>
   if (!plan) return <div className="loading">Plan not found.</div>
 
+  const planCategories = (plan.plan_categories || []).map(pc => pc.categories).filter(Boolean)
+
   return (
     <div className="page page-detail">
       <div className="form-header">
@@ -72,7 +76,10 @@ export default function PlanDetail() {
       <div className="detail-layout">
         <div className="detail-main">
           <div className="detail-title-row">
-            <h1 className="detail-title">{plan.title}</h1>
+            <h1 className="detail-title">{plan.asset}</h1>
+            {planCategories.map(cat => (
+              <span key={cat.id} className="card-tag" style={{ fontSize: 13 }}>{cat.name}</span>
+            ))}
             {plan.status === 'won' && <span className="status-badge won">✓ Won</span>}
             {plan.status === 'lost' && <span className="status-badge lost">✗ Lost</span>}
             {plan.status === 'active' && <span className="status-badge active">Active</span>}
@@ -96,10 +103,10 @@ export default function PlanDetail() {
               <span className="detail-label">Asset</span>
               <span className="detail-val">{plan.asset}</span>
             </div>
-            {plan.categories?.name && (
+            {planCategories.length > 0 && (
               <div className="detail-row">
-                <span className="detail-label">Category</span>
-                <span className="detail-val">{plan.categories.name}</span>
+                <span className="detail-label">Categories</span>
+                <span className="detail-val">{planCategories.map(c => c.name).join(', ')}</span>
               </div>
             )}
             {plan.timeframe && (
@@ -174,7 +181,7 @@ export default function PlanDetail() {
       <ConfirmModal
         isOpen={deleteModal}
         title="Delete plan?"
-        message={`This will permanently delete "${plan.title}" and all its charts. This cannot be undone.`}
+        message="This will permanently delete this plan and all its charts. This cannot be undone."
         confirmText="Delete"
         confirmClass="btn-delete-confirm"
         onConfirm={handleDelete}

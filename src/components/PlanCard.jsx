@@ -1,3 +1,5 @@
+// PlanCard.jsx
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -5,8 +7,7 @@ import ConfirmModal from './ConfirmModal'
 
 export default function PlanCard({ plan, onStatusChange }) {
   const navigate = useNavigate()
-  const [confirmModal, setConfirmModal] = useState(null) // { status: 'won' | 'lost' }
-
+  const [confirmModal, setConfirmModal] = useState(null)
   const firstImage = plan.plan_images?.[0]
   const [imgUrl, setImgUrl] = useState(null)
 
@@ -22,20 +23,19 @@ export default function PlanCard({ plan, onStatusChange }) {
 
   const handleConfirmStatus = async () => {
     const { status } = confirmModal
-    const { error } = await supabase
-      .from('plans')
-      .update({ status })
-      .eq('id', plan.id)
+    const { error } = await supabase.from('plans').update({ status }).eq('id', plan.id)
     if (!error) onStatusChange(plan.id, status)
     setConfirmModal(null)
   }
+
+  const planCategories = (plan.plan_categories || []).map(pc => pc.categories).filter(Boolean)
 
   return (
     <>
       <div className="plan-card" onClick={() => navigate(`/plan/${plan.id}`)}>
         <div className="card-img">
           {imgUrl
-            ? <img src={imgUrl} alt={plan.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ? <img src={imgUrl} alt={plan.asset} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : <div className="card-img-empty">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 <span>No chart</span>
@@ -45,9 +45,10 @@ export default function PlanCard({ plan, onStatusChange }) {
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div className="card-pair">
             {plan.asset}
-            {plan.categories?.name && <span className="card-tag">{plan.categories.name}</span>}
+            {planCategories.map(cat => (
+              <span key={cat.id} className="card-tag">{cat.name}</span>
+            ))}
           </div>
-          <div className="card-title">{plan.title}</div>
           {plan.description && <div className="card-desc">{plan.description}</div>}
           {plan.status === 'active' && (
             <div className="card-footer">
@@ -63,7 +64,7 @@ export default function PlanCard({ plan, onStatusChange }) {
       <ConfirmModal
         isOpen={!!confirmModal}
         title={confirmModal?.status === 'won' ? 'Mark as Won?' : 'Mark as Lost?'}
-        message={`Are you sure you want to mark "${plan.title}" as ${confirmModal?.status}? This will move it to Completed plans.`}
+        message={`Are you sure you want to mark "${plan.asset}" as ${confirmModal?.status}? This will move it to Completed plans.`}
         confirmText={confirmModal?.status === 'won' ? '✓ Mark as Won' : '✗ Mark as Lost'}
         confirmClass={confirmModal?.status === 'won' ? 'btn-won-confirm' : 'btn-lost-confirm'}
         onConfirm={handleConfirmStatus}

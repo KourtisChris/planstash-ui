@@ -1,3 +1,5 @@
+// Dashboard.jsx
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -10,7 +12,7 @@ export default function Dashboard() {
   const [plans, setPlans] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('active') // 'all' | 'active' | 'completed'
+  const [tab, setTab] = useState('active')
   const [categoryFilter, setCategoryFilter] = useState(null)
   const [search, setSearch] = useState('')
 
@@ -22,7 +24,7 @@ export default function Dashboard() {
     setLoading(true)
     const [{ data: plansData }, { data: catsData }] = await Promise.all([
       supabase.from('plans')
-        .select('*, categories(name), plan_images(storage_path)')
+        .select('*, plan_images(storage_path), plan_categories(category_id, categories(id, name))')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
       supabase.from('categories')
@@ -42,10 +44,13 @@ export default function Dashboard() {
   const filtered = plans.filter(p => {
     if (tab === 'active' && p.status !== 'active') return false
     if (tab === 'completed' && p.status === 'active') return false
-    if (categoryFilter && p.category_id !== categoryFilter) return false
+    if (categoryFilter) {
+      const hasCat = (p.plan_categories || []).some(pc => pc.category_id === categoryFilter)
+      if (!hasCat) return false
+    }
     if (search) {
       const q = search.toLowerCase()
-      if (!p.title.toLowerCase().includes(q) && !(p.description || '').toLowerCase().includes(q)) return false
+      if (!(p.asset || '').toLowerCase().includes(q) && !(p.description || '').toLowerCase().includes(q)) return false
     }
     return true
   })
@@ -67,7 +72,7 @@ export default function Dashboard() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               type="text"
-              placeholder="Search titles & descriptions..."
+              placeholder="Search assets & descriptions..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
